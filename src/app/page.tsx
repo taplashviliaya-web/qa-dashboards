@@ -154,7 +154,7 @@ export default function DashboardHub() {
                         fontStyle: "italic"
                       }}
                     >
-                      "{dashboard.funnySentence}"
+                      &ldquo;{dashboard.funnySentence}&rdquo;
                     </p>
                   </div>
                 )}

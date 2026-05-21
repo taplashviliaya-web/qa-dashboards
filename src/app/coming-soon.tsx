@@ -29,10 +29,10 @@ export default function ComingSoonPage({
           Coming Soon ⏳
         </div>
         <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 24 }}>
-          "{funnySentence}"
+          &ldquo;{funnySentence}&rdquo;
         </p>
         <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          We're working hard to bring this dashboard to life. Check back soon!
+          We&apos;re working hard to bring this dashboard to life. Check back soon!
         </p>
       </section>
     </main>
