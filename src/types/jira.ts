@@ -37,6 +37,19 @@ export type JiraEpicDetails = {
 };
 
 /**
+ * Console Epic details. Same shape as a Player Epic but without the
+ * A/B Testing / widget pieces — the Console dashboard only shows the
+ * Epic itself and its `is blocked by` linked tickets.
+ */
+export type JiraConsoleEpicDetails = {
+  key: string;
+  title: string;
+  status: string;
+  url: string;
+  linkedTickets: JiraLinkedTicket[];
+};
+
+/**
  * Minimal subset of the Jira REST API issue payload that we read in this app.
  * We intentionally keep this loose to avoid coupling to every Jira field.
  */

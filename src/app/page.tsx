@@ -24,10 +24,10 @@ const dashboards: Dashboard[] = [
   {
     slug: "console",
     title: "Console Version",
-    description: "Manage core video platform configurations, including widgets, playlists, inventory, and video assets",
-    status: "coming_soon",
+    description: "Track Video Console Version Tests Epics from Jira and their related tickets",
+    status: "ready",
     emoji: "💻",
-    funnySentence: "Wrangling widgets, herding playlists, and counting inventory — turns out video assets have opinions too."
+    funnySentence: ""
   },
   {
     slug: "admin",

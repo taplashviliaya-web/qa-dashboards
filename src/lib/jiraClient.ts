@@ -1,4 +1,5 @@
 import type {
+  JiraConsoleEpicDetails,
   JiraEpicDetails,
   JiraEpicSummary,
   JiraIssueRaw,
@@ -10,6 +11,17 @@ import { parsePlayerVersion } from "@/lib/parseVersion";
 
 const EPIC_JQL = [
   'summary ~ "Video Player Version Tests"',
+  "type = Epic",
+  "status NOT IN (Resolved, Rejected)"
+].join(" AND ");
+
+/**
+ * JQL for the Console Dashboard — same shape as the Player one, with
+ * "Player" swapped for "Console" so we get the corresponding
+ * `Video Console Version Tests …` Epics.
+ */
+const CONSOLE_EPIC_JQL = [
+  'summary ~ "Video Console Version Tests"',
   "type = Epic",
   "status NOT IN (Resolved, Rejected)"
 ].join(" AND ");
@@ -274,5 +286,49 @@ export async function getEpicDetails(key: string): Promise<JiraEpicDetails> {
           ? "No Widget IDs found in the A/B Testing description."
           : undefined
     }
+  };
+}
+
+/* ---------------------------- Console Dashboard --------------------------- */
+
+/**
+ * Get active Console Epics. Mirrors {@link getActiveEpics} but uses the
+ * Console JQL so the dashboard only sees `Video Console Version Tests`
+ * Epics that are not Resolved/Rejected.
+ */
+export async function getActiveConsoleEpics(
+  maxResults = 100
+): Promise<JiraEpicSummary[]> {
+  const { baseUrl } = getJiraConfig();
+  const params = new URLSearchParams({
+    jql: CONSOLE_EPIC_JQL,
+    fields: EPIC_SEARCH_FIELDS.join(","),
+    maxResults: String(maxResults)
+  });
+
+  const data = await jiraFetch<JiraSearchResponse>(
+    `/rest/api/3/search/jql?${params.toString()}`
+  );
+  const issues = data.issues ?? [];
+  return issues.map((issue) => toEpicSummary(issue, baseUrl));
+}
+
+/**
+ * Get details for a single Console Epic: title, status, link, and the
+ * `is blocked by` linked tickets. We deliberately skip the A/B Testing
+ * / widgets logic — the Console dashboard does not surface Polaris.
+ */
+export async function getConsoleEpicDetails(
+  key: string
+): Promise<JiraConsoleEpicDetails> {
+  const { baseUrl } = getJiraConfig();
+  const epic = await getIssue(key, EPIC_DETAIL_FIELDS);
+
+  return {
+    key: epic.key,
+    title: epic.fields.summary ?? "(no title)",
+    status: epic.fields.status?.name ?? "Unknown",
+    url: buildIssueUrl(baseUrl, epic.key),
+    linkedTickets: extractIsBlockedBy(epic, baseUrl)
   };
 }

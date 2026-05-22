@@ -7,11 +7,17 @@ type Props = {
   epics: JiraEpicSummary[];
   selectedKey?: string;
   onSelect: (key: string) => void;
+  emptyMessage?: string;
 };
 
-export function EpicsTable({ epics, selectedKey, onSelect }: Props) {
+export function EpicsTable({
+  epics,
+  selectedKey,
+  onSelect,
+  emptyMessage = "No active Player Version Epics found."
+}: Props) {
   if (epics.length === 0) {
-    return <p className="muted">No active Player Version Epics found.</p>;
+    return <p className="muted">{emptyMessage}</p>;
   }
 
   return (

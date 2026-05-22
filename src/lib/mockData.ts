@@ -1,4 +1,5 @@
 import type {
+  JiraConsoleEpicDetails,
   JiraEpicDetails,
   JiraEpicSummary
 } from "@/types/jira";
@@ -194,6 +195,119 @@ const DETAILS_BY_KEY: Record<string, JiraEpicDetails> = {
 
 export function getMockEpicDetails(key: string): JiraEpicDetails | undefined {
   return DETAILS_BY_KEY[key];
+}
+
+/* --------------------------- Console Dashboard --------------------------- */
+
+export const MOCK_CONSOLE_EPICS: JiraEpicSummary[] = [
+  {
+    key: "CONS-512",
+    title: "Video Console - Version Tests - v3.18 (Inventory Hub)",
+    status: "In Progress",
+    url: url("CONS-512")
+  },
+  {
+    key: "CONS-498",
+    title: "Video Console - Version Tests - v3.17 (Playlist Editor)",
+    status: "In QA",
+    url: url("CONS-498")
+  },
+  {
+    key: "CONS-470",
+    title: "Video Console - Version Tests - v3.15 (Widget Manager Refresh)",
+    status: "In Review",
+    url: url("CONS-470")
+  },
+  {
+    key: "CONS-441",
+    title: "Video Console - Version Tests - v3.12",
+    status: "To Do",
+    url: url("CONS-441")
+  }
+];
+
+const CONS_512_DETAILS: JiraConsoleEpicDetails = {
+  key: "CONS-512",
+  title: "Video Console - Version Tests - v3.18 (Inventory Hub)",
+  status: "In Progress",
+  url: url("CONS-512"),
+  linkedTickets: [
+    {
+      key: "CONS-513",
+      title: "Inventory Hub: bulk edit modal regression",
+      status: "In Progress",
+      url: url("CONS-513")
+    },
+    {
+      key: "CONS-514",
+      title: "Inventory filters lose state on tab switch",
+      status: "In Review",
+      url: url("CONS-514")
+    },
+    {
+      key: "CONS-515",
+      title: "Inventory Hub keyboard navigation polish",
+      status: "Done",
+      url: url("CONS-515")
+    }
+  ]
+};
+
+const CONS_498_DETAILS: JiraConsoleEpicDetails = {
+  key: "CONS-498",
+  title: "Video Console - Version Tests - v3.17 (Playlist Editor)",
+  status: "In QA",
+  url: url("CONS-498"),
+  linkedTickets: [
+    {
+      key: "CONS-499",
+      title: "Playlist Editor: drag handle hit area too small",
+      status: "Blocked",
+      url: url("CONS-499")
+    },
+    {
+      key: "CONS-500",
+      title: "Playlist autosave race condition",
+      status: "In Progress",
+      url: url("CONS-500")
+    }
+  ]
+};
+
+const CONS_470_DETAILS: JiraConsoleEpicDetails = {
+  key: "CONS-470",
+  title: "Video Console - Version Tests - v3.15 (Widget Manager Refresh)",
+  status: "In Review",
+  url: url("CONS-470"),
+  linkedTickets: [
+    {
+      key: "CONS-471",
+      title: "Widget Manager column resize persists incorrectly",
+      status: "Done",
+      url: url("CONS-471")
+    }
+  ]
+};
+
+const CONS_441_DETAILS: JiraConsoleEpicDetails = {
+  key: "CONS-441",
+  title: "Video Console - Version Tests - v3.12",
+  status: "To Do",
+  url: url("CONS-441"),
+  linkedTickets: []
+};
+
+const CONSOLE_DETAILS_BY_KEY: Record<string, JiraConsoleEpicDetails> = {
+  "CONS-512": CONS_512_DETAILS,
+  "CONS-498": CONS_498_DETAILS,
+  "CONS-470": CONS_470_DETAILS,
+  "CONS-441": CONS_441_DETAILS
+};
+
+export function getMockConsoleEpicDetails(
+  key: string
+): JiraConsoleEpicDetails | undefined {
+  return CONSOLE_DETAILS_BY_KEY[key];
 }
 
 /* ------------------------------- Polaris -------------------------------- */
