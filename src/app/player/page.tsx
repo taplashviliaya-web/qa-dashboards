@@ -43,24 +43,44 @@ export default function PlayerDashboardPage() {
 
   return (
     <main className="app-shell">
-      <Link href="/" className="back-link">
-        <span aria-hidden>←</span> Back to Hub
-      </Link>
+      <nav className="crumbs" aria-label="Breadcrumb">
+        <Link href="/">Dashboards</Link>
+        <span className="sep">/</span>
+        <span className="current">Player Dashboard</span>
+      </nav>
 
       <header className="app-header">
-        <div className="hstack-between" style={{ alignItems: "flex-start" }}>
+        <div className="header-row">
           <div>
-            <div className="hero-eyebrow" style={{ marginBottom: 12 }}>
-              <span className="dot" />
-              <span>Player · Version Testing</span>
-            </div>
-            <h1>
-              QA Player <span className="text-aurora">Version Testing</span>
-            </h1>
+            <h1>Player Version Testing</h1>
             <p>
               Active Video Player version-test Epics from Jira, paired with A/B widget
               performance from Polaris.
             </p>
+            <div className="meta-row">
+              {epicCount !== null ? (
+                <>
+                  <span className="mono">{epicCount} active epic{epicCount === 1 ? "" : "s"}</span>
+                  <span className="dot-sep">·</span>
+                </>
+              ) : null}
+              <span>Source · Jira + Polaris</span>
+              {isMock ? (
+                <>
+                  <span className="dot-sep">·</span>
+                  <span style={{ color: "var(--status-orange-text)" }}>Mock mode</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+          <div className="header-actions">
+            <button
+              className="primary"
+              onClick={() => void loadEpics()}
+              disabled={state.status === "loading"}
+            >
+              {state.status === "loading" ? "Refreshing…" : "Refresh"}
+            </button>
           </div>
         </div>
       </header>
@@ -78,40 +98,9 @@ export default function PlayerDashboardPage() {
         </div>
       ) : null}
 
-      <div className="ai-banner" role="status" aria-live="polite">
-        <span className="spark" aria-hidden />
-        <div>
-          {state.status === "ready" ? (
-            <>
-              <b>AI summary</b>{" "}
-              <span className="muted">
-                Currently tracking{" "}
-                <b style={{ color: "var(--text)" }}>
-                  {epicCount} active Player Epic{epicCount === 1 ? "" : "s"}
-                </b>
-                . Select a row to view its widget IDs and Polaris A/B performance.
-              </span>
-            </>
-          ) : state.status === "loading" ? (
-            <span className="shimmer">Analyzing active Player Epics…</span>
-          ) : (
-            <span className="muted">AI summary unavailable while Epics fail to load.</span>
-          )}
-        </div>
-      </div>
-
       <section className="panel">
         <div className="panel-header">
           <h2>Active Player Version Epics</h2>
-          <div className="panel-actions">
-            <button
-              className="primary"
-              onClick={() => void loadEpics()}
-              disabled={state.status === "loading"}
-            >
-              {state.status === "loading" ? "Loading…" : "Refresh Epics"}
-            </button>
-          </div>
         </div>
 
         {state.status === "loading" ? (

@@ -44,25 +44,45 @@ export default function ConsoleDashboardPage() {
 
   return (
     <main className="app-shell">
-      <Link href="/" className="back-link">
-        <span aria-hidden>←</span> Back to Hub
-      </Link>
+      <nav className="crumbs" aria-label="Breadcrumb">
+        <Link href="/">Dashboards</Link>
+        <span className="sep">/</span>
+        <span className="current">Console Version</span>
+      </nav>
 
       <header className="app-header">
-        <div className="hstack-between" style={{ alignItems: "flex-start" }}>
+        <div className="header-row">
           <div>
-            <div className="hero-eyebrow" style={{ marginBottom: 12 }}>
-              <span className="dot" />
-              <span>Console · Version Testing</span>
-            </div>
-            <h1>
-              QA Console <span className="text-aurora">Version Testing</span>
-            </h1>
+            <h1>Console Version Testing</h1>
             <p>
               Active Video Console version-test Epics from Jira, with their related
-              tickets. Console has no Polaris coverage — widget performance lives on
-              the Player dashboard.
+              tickets. Console has no Polaris coverage — widget performance lives on the
+              Player dashboard.
             </p>
+            <div className="meta-row">
+              {epicCount !== null ? (
+                <>
+                  <span className="mono">{epicCount} active epic{epicCount === 1 ? "" : "s"}</span>
+                  <span className="dot-sep">·</span>
+                </>
+              ) : null}
+              <span>Source · Jira</span>
+              {isMock ? (
+                <>
+                  <span className="dot-sep">·</span>
+                  <span style={{ color: "var(--status-orange-text)" }}>Mock mode</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+          <div className="header-actions">
+            <button
+              className="primary"
+              onClick={() => void loadEpics()}
+              disabled={state.status === "loading"}
+            >
+              {state.status === "loading" ? "Refreshing…" : "Refresh"}
+            </button>
           </div>
         </div>
       </header>
@@ -80,40 +100,9 @@ export default function ConsoleDashboardPage() {
         </div>
       ) : null}
 
-      <div className="ai-banner" role="status" aria-live="polite">
-        <span className="spark" aria-hidden />
-        <div>
-          {state.status === "ready" ? (
-            <>
-              <b>AI summary</b>{" "}
-              <span className="muted">
-                Currently tracking{" "}
-                <b style={{ color: "var(--text)" }}>
-                  {epicCount} active Console Epic{epicCount === 1 ? "" : "s"}
-                </b>
-                . Select a row to view its linked tickets, owners and progress.
-              </span>
-            </>
-          ) : state.status === "loading" ? (
-            <span className="shimmer">Analyzing active Console Epics…</span>
-          ) : (
-            <span className="muted">AI summary unavailable while Epics fail to load.</span>
-          )}
-        </div>
-      </div>
-
       <section className="panel">
         <div className="panel-header">
           <h2>Active Console Version Epics</h2>
-          <div className="panel-actions">
-            <button
-              className="primary"
-              onClick={() => void loadEpics()}
-              disabled={state.status === "loading"}
-            >
-              {state.status === "loading" ? "Loading…" : "Refresh Epics"}
-            </button>
-          </div>
         </div>
 
         {state.status === "loading" ? (

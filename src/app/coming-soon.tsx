@@ -15,45 +15,51 @@ export default function ComingSoonPage({
 }) {
   return (
     <main className="app-shell">
-      <Link href="/" className="back-link">
-        <span aria-hidden>←</span> Back to Hub
-      </Link>
+      <nav className="crumbs" aria-label="Breadcrumb">
+        <Link href="/">Dashboards</Link>
+        <span className="sep">/</span>
+        <span className="current">{title}</span>
+      </nav>
 
-      <section className="hero" style={{ paddingTop: 40 }}>
-        <div className="hero-eyebrow">
-          <span className="dot" style={{ background: "var(--amber)" }} />
-          <span>In the pipeline</span>
+      <header className="app-header">
+        <div className="header-row">
+          <div>
+            <h1>{title}</h1>
+            <p>{description}</p>
+            <div className="meta-row">
+              <span
+                className="status-pill coming"
+                style={{ marginTop: 4 }}
+              >
+                <span className="dot" />
+                Coming soon
+              </span>
+            </div>
+          </div>
         </div>
-        <div
-          style={{
-            fontSize: 56,
-            lineHeight: 1,
-            marginBottom: 12
-          }}
-        >
-          {emoji}
-        </div>
-        <h1>
-          {title}
-          <br />
-          <span className="text-aurora">coming soon.</span>
-        </h1>
-        <p>{description}</p>
-      </section>
+      </header>
 
       <section
         className="panel"
         style={{
-          textAlign: "center",
-          maxWidth: 560,
+          maxWidth: 640,
           margin: "0 auto",
-          padding: 28
+          width: "100%",
+          textAlign: "center",
+          padding: 32
         }}
       >
-        <span className="status-pill coming" style={{ marginBottom: 14 }}>
-          <span className="dot" />
-          Coming soon
-        </span>
+        <div
+          className="hub-card-icon"
+          style={{
+            margin: "0 auto 16px",
+            width: 56,
+            height: 56,
+            fontSize: 28
+          }}
+        >
+          {emoji}
+        </div>
         <p
           style={{
             fontSize: 14,

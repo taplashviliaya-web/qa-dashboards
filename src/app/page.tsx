@@ -7,8 +7,11 @@ type Dashboard = {
   title: string;
   description: string;
   status: "ready" | "coming_soon";
-  emoji: string;
-  funnySentence: string;
+  /** Image src for the icon tile (preferred). Falls back to `emoji` if absent. */
+  iconSrc?: string;
+  emoji?: string;
+  meta: string;
+  funnySentence?: string;
 };
 
 const dashboards: Dashboard[] = [
@@ -16,19 +19,19 @@ const dashboards: Dashboard[] = [
     slug: "player",
     title: "Player Dashboard",
     description:
-      "Track Video Player version tests & A/B performance from Jira + Polaris.",
+      "Video Player version-tests and A/B widget performance from Jira and Polaris.",
     status: "ready",
-    emoji: "▶️",
-    funnySentence: ""
+    iconSrc: "/truvid-logo.png",
+    meta: "Live · Jira + Polaris"
   },
   {
     slug: "console",
     title: "Console Version",
     description:
-      "Console version-tests Epics + Jira links, plus the latest Playwright E2E run from truvidConsole/e2e.yml.",
+      "Active Video Console version-tests Epics from Jira and their related tickets.",
     status: "ready",
-    emoji: "💻",
-    funnySentence: ""
+    emoji: "▤",
+    meta: "Live · Jira"
   },
   {
     slug: "admin",
@@ -36,6 +39,7 @@ const dashboards: Dashboard[] = [
     description: "System configuration, user management, and analytics.",
     status: "coming_soon",
     emoji: "👑",
+    meta: "In planning",
     funnySentence:
       "With great admin powers comes great responsibility… and lots of settings."
   },
@@ -44,54 +48,76 @@ const dashboards: Dashboard[] = [
     title: "Polaris Analytics",
     description: "Deep-dive into widget performance and monetization metrics.",
     status: "coming_soon",
-    emoji: "✨",
+    emoji: "✦",
+    meta: "In planning",
     funnySentence: "Even the stars need time to align. We're working on it."
   }
 ];
 
 export default function DashboardHub() {
+  const activeCount = dashboards.filter((d) => d.status === "ready").length;
+  const comingCount = dashboards.length - activeCount;
+
   return (
     <main className="app-shell">
-      <section className="hero">
-        <div className="hero-eyebrow">
-          <span className="dot" />
-          <span>QA · Branovate Video Intelligence</span>
-        </div>
-        <h1>
-          Your <span className="text-aurora">command center</span>
-          <br />
-          for video QA & analytics.
-        </h1>
-        <p>
-          Jira-backed Epic tracking, Polaris widget performance and version-test
-          intelligence — all in one place.
-        </p>
-      </section>
+      <nav className="crumbs" aria-label="Breadcrumb">
+        <span>Branovate Video</span>
+        <span className="sep">/</span>
+        <span>QA</span>
+        <span className="sep">/</span>
+        <span className="current">Dashboards</span>
+      </nav>
 
-      <div className="hub-grid">
+      <header className="app-header">
+        <div className="header-row">
+          <div>
+            <h1>Welcome back, QA team.</h1>
+            <div className="meta-row">
+              <span className="mono">{dashboards.length} dashboards</span>
+              <span className="dot-sep">·</span>
+              <span className="mono">{activeCount} active</span>
+              <span className="dot-sep">·</span>
+              <span className="mono">{comingCount} coming soon</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section className="hub-grid">
         {dashboards.map((dashboard) => {
           const isReady = dashboard.status === "ready";
-          const content = (
-            <article className={`hub-card ${isReady ? "" : "hub-card-disabled"}`}>
-              <div className="hstack-between">
-                <div className="hub-card-icon">{dashboard.emoji}</div>
-                {isReady ? (
-                  <span className="status-pill ready">
-                    <span className="dot" />
-                    Live
-                  </span>
-                ) : (
-                  <span className="status-pill coming">
-                    <span className="dot" />
-                    Coming soon
-                  </span>
-                )}
+          const inner = (
+            <article className={`hub-card ${isReady ? "" : "is-coming"}`}>
+              <div className="hub-card-head">
+                <div
+                  className={`hub-card-icon ${dashboard.iconSrc ? "hub-card-icon-image" : ""}`}
+                >
+                  {dashboard.iconSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={dashboard.iconSrc}
+                      alt=""
+                      width={38}
+                      height={38}
+                    />
+                  ) : (
+                    dashboard.emoji
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2>{dashboard.title}</h2>
+                  <div className="hub-card-meta">{dashboard.meta}</div>
+                </div>
+                <span
+                  className={`status-pill ${isReady ? "active" : "coming"}`}
+                  style={{ flexShrink: 0 }}
+                >
+                  <span className="dot" />
+                  {isReady ? "Active" : "Coming soon"}
+                </span>
               </div>
 
-              <div>
-                <h2>{dashboard.title}</h2>
-                <p>{dashboard.description}</p>
-              </div>
+              <p>{dashboard.description}</p>
 
               {!isReady && dashboard.funnySentence ? (
                 <p
@@ -106,15 +132,19 @@ export default function DashboardHub() {
                 </p>
               ) : null}
 
-              <div className="hub-card-footer">
-                <span style={{ fontSize: 12, color: "var(--text-subtle)" }}>
-                  {isReady ? "Open dashboard" : "In the pipeline"}
-                </span>
+              <div
+                className="hub-card-footer"
+                style={{ justifyContent: isReady ? "flex-end" : "flex-start" }}
+              >
                 {isReady ? (
                   <span className="hub-card-cta">
                     Launch <span aria-hidden>→</span>
                   </span>
-                ) : null}
+                ) : (
+                  <span style={{ fontSize: 12, color: "var(--text-subtle)" }}>
+                    In the pipeline
+                  </span>
+                )}
               </div>
             </article>
           );
@@ -125,20 +155,20 @@ export default function DashboardHub() {
               href={`/${dashboard.slug}`}
               style={{ textDecoration: "none", color: "inherit" }}
             >
-              {content}
+              {inner}
             </Link>
           ) : (
-            <div key={dashboard.slug}>{content}</div>
+            <div key={dashboard.slug}>{inner}</div>
           );
         })}
-      </div>
+      </section>
 
       <footer
         style={{
-          textAlign: "center",
+          textAlign: "left",
           color: "var(--text-subtle)",
           fontSize: 12,
-          paddingTop: 28,
+          paddingTop: 20,
           marginTop: 8,
           borderTop: "1px solid var(--border)"
         }}
@@ -148,7 +178,6 @@ export default function DashboardHub() {
           are missing.
         </p>
       </footer>
-
     </main>
   );
 }
