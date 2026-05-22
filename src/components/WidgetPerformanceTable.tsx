@@ -135,27 +135,27 @@ export function WidgetPerformanceTable({ rows }: Props) {
         })}
       </div>
 
-      <div className="table-wrap">
-        <table className="data-table">
+      <div className="table-wrap table-wrap-sticky">
+        <table className="data-table data-table-ab">
           <thead>
             <tr>
               <th>Widget ID</th>
               <th>Widget Name</th>
-              <th>Top Page URL</th>
               <th>Approval</th>
-              <th className="number">A Revenue eCPM</th>
-              <th className="number">B Revenue eCPM</th>
+              <th className="number col-a">A Revenue eCPM</th>
+              <th className="number col-b">B Revenue eCPM</th>
               <th className="number">Δ eCPM (B − A)</th>
               <th>Comment</th>
-              <th>A Version</th>
-              <th>B Version</th>
-              <th className="number">A Server Calls</th>
-              <th className="number">B Server Calls</th>
-              <th className="number">A Traffic %</th>
-              <th className="number">B Traffic %</th>
-              <th className="number">A Revenue</th>
-              <th className="number">B Revenue</th>
+              <th className="col-a">A Version</th>
+              <th className="col-b">B Version</th>
+              <th className="number col-a">A Server Calls</th>
+              <th className="number col-b">B Server Calls</th>
               <th>Split</th>
+              <th className="number col-a">A Traffic %</th>
+              <th className="number col-b">B Traffic %</th>
+              <th className="number col-a">A Revenue</th>
+              <th className="number col-b">B Revenue</th>
+              <th>Top Page URL</th>
             </tr>
           </thead>
           <tbody>
@@ -180,6 +180,31 @@ export function WidgetPerformanceTable({ rows }: Props) {
                 <tr key={row.widgetId} className={`row-status-${row.color}`}>
                   <td className="widget-id">{row.widgetId}</td>
                   <td>{row.widgetName}</td>
+                  <td>
+                    <StatusBadge
+                      color={row.color}
+                      label={`${meta.icon} ${meta.label}`}
+                    />
+                  </td>
+                  <td className="number ecpm-cell col-a">{fmtMoney(row.aRevenueEcpm)}</td>
+                  <td className="number ecpm-cell ecpm-b col-b">
+                    {row.bVersion ? fmtMoney(row.bRevenueEcpm) : "—"}
+                  </td>
+                  <td className={`number ${ecpmDelta.className}`}>
+                    {ecpmDelta.label}
+                  </td>
+                  <td className="comment-cell">{row.comment}</td>
+                  <td className="col-a">{row.aVersion || "—"}</td>
+                  <td className="col-b">{row.bVersion || "—"}</td>
+                  <td className="number col-a">{fmtInt(row.aServerCalls)}</td>
+                  <td className="number col-b">{fmtInt(row.bServerCalls)}</td>
+                  <td>
+                    <StatusBadge color={splitColor} label={splitLabel} />
+                  </td>
+                  <td className="number col-a">{fmtPercent(row.aTrafficPercent)}</td>
+                  <td className="number col-b">{fmtPercent(row.bTrafficPercent)}</td>
+                  <td className="number col-a">{fmtMoney(row.aRevenue)}</td>
+                  <td className="number col-b">{fmtMoney(row.bRevenue)}</td>
                   <td className="page-url-cell">
                     {row.topPageUrl ? (
                       <a
@@ -193,31 +218,6 @@ export function WidgetPerformanceTable({ rows }: Props) {
                     ) : (
                       <span className="muted">—</span>
                     )}
-                  </td>
-                  <td>
-                    <StatusBadge
-                      color={row.color}
-                      label={`${meta.icon} ${meta.label}`}
-                    />
-                  </td>
-                  <td className="number ecpm-cell">{fmtMoney(row.aRevenueEcpm)}</td>
-                  <td className="number ecpm-cell ecpm-b">
-                    {row.bVersion ? fmtMoney(row.bRevenueEcpm) : "—"}
-                  </td>
-                  <td className={`number ${ecpmDelta.className}`}>
-                    {ecpmDelta.label}
-                  </td>
-                  <td className="comment-cell">{row.comment}</td>
-                  <td>{row.aVersion || "—"}</td>
-                  <td>{row.bVersion || "—"}</td>
-                  <td className="number">{fmtInt(row.aServerCalls)}</td>
-                  <td className="number">{fmtInt(row.bServerCalls)}</td>
-                  <td className="number">{fmtPercent(row.aTrafficPercent)}</td>
-                  <td className="number">{fmtPercent(row.bTrafficPercent)}</td>
-                  <td className="number">{fmtMoney(row.aRevenue)}</td>
-                  <td className="number">{fmtMoney(row.bRevenue)}</td>
-                  <td>
-                    <StatusBadge color={splitColor} label={splitLabel} />
                   </td>
                 </tr>
               );

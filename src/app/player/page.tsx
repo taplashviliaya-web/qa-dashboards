@@ -39,8 +39,6 @@ export default function PlayerDashboardPage() {
     void loadEpics();
   }, [loadEpics]);
 
-  const epicCount = state.status === "ready" ? state.epics.length : null;
-
   return (
     <main className="app-shell">
       <nav className="crumbs" aria-label="Breadcrumb">
@@ -57,21 +55,6 @@ export default function PlayerDashboardPage() {
               Active Video Player version-test Epics from Jira, paired with A/B widget
               performance from Polaris.
             </p>
-            <div className="meta-row">
-              {epicCount !== null ? (
-                <>
-                  <span className="mono">{epicCount} active epic{epicCount === 1 ? "" : "s"}</span>
-                  <span className="dot-sep">·</span>
-                </>
-              ) : null}
-              <span>Source · Jira + Polaris</span>
-              {isMock ? (
-                <>
-                  <span className="dot-sep">·</span>
-                  <span style={{ color: "var(--status-orange-text)" }}>Mock mode</span>
-                </>
-              ) : null}
-            </div>
           </div>
           <div className="header-actions">
             <button

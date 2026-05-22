@@ -26,9 +26,9 @@ const dashboards: Dashboard[] = [
   },
   {
     slug: "console",
-    title: "Console Version",
+    title: "Console Dashboard",
     description:
-      "Active Video Console version-tests Epics from Jira and their related tickets.",
+      "Active Console version Jira Epics and Playwright e2e automation status.",
     status: "ready",
     emoji: "▤",
     meta: "Live · Jira"
@@ -55,9 +55,6 @@ const dashboards: Dashboard[] = [
 ];
 
 export default function DashboardHub() {
-  const activeCount = dashboards.filter((d) => d.status === "ready").length;
-  const comingCount = dashboards.length - activeCount;
-
   return (
     <main className="app-shell">
       <nav className="crumbs" aria-label="Breadcrumb">
@@ -71,14 +68,7 @@ export default function DashboardHub() {
       <header className="app-header">
         <div className="header-row">
           <div>
-            <h1>Welcome back, QA team.</h1>
-            <div className="meta-row">
-              <span className="mono">{dashboards.length} dashboards</span>
-              <span className="dot-sep">·</span>
-              <span className="mono">{activeCount} active</span>
-              <span className="dot-sep">·</span>
-              <span className="mono">{comingCount} coming soon</span>
-            </div>
+            <h1>Welcome to Dashboards Hub</h1>
           </div>
         </div>
       </header>
@@ -117,34 +107,23 @@ export default function DashboardHub() {
                 </span>
               </div>
 
-              <p>{dashboard.description}</p>
+              <p className="hub-card-desc">{dashboard.description}</p>
 
-              {!isReady && dashboard.funnySentence ? (
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 12,
-                    color: "var(--text-subtle)",
-                    fontStyle: "italic"
-                  }}
-                >
-                  “{dashboard.funnySentence}”
-                </p>
-              ) : null}
+              <p className="hub-card-quote">
+                {!isReady && dashboard.funnySentence
+                  ? `“${dashboard.funnySentence}”`
+                  : ""}
+              </p>
 
-              <div
-                className="hub-card-footer"
-                style={{ justifyContent: isReady ? "flex-end" : "flex-start" }}
-              >
+              <div className="hub-card-footer">
+                <span className="hub-card-footer-status">
+                  {isReady ? "" : "In the pipeline"}
+                </span>
                 {isReady ? (
                   <span className="hub-card-cta">
                     Launch <span aria-hidden>→</span>
                   </span>
-                ) : (
-                  <span style={{ fontSize: 12, color: "var(--text-subtle)" }}>
-                    In the pipeline
-                  </span>
-                )}
+                ) : null}
               </div>
             </article>
           );
