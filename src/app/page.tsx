@@ -142,6 +142,58 @@ export default function DashboardHub() {
         })}
       </section>
 
+      <section className="ideas-panel" aria-labelledby="ideas-title">
+        <div className="ideas-header">
+          <span className="ideas-icon" aria-hidden>
+            🤔
+          </span>
+          <div>
+            <h2 id="ideas-title">Next Steps &amp; Ideas</h2>
+            <p className="ideas-subtitle">
+              Brain-dump of what could come next. Nothing is wired up yet — just
+              ideas marinating.
+            </p>
+          </div>
+          <span className="ideas-badge">
+            <span aria-hidden>💭</span> Brainstorm
+          </span>
+        </div>
+
+        <ol className="ideas-list">
+          <li>
+            <span className="ideas-step">1</span>
+            <div>
+              <h3>Widget selection for A/B</h3>
+              <p>
+                Pick the candidate widgets that should enter the next A/B round
+                straight from the dashboard.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span className="ideas-step">2</span>
+            <div>
+              <h3>Push chosen widgets into the Jira A/B sub-task</h3>
+              <p>
+                Once widgets are selected, auto-insert them into the matching
+                A/B sub-task in Jira so QA &amp; Dev share one source of truth.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span className="ideas-step">3</span>
+            <div>
+              <h3>Auto-Epic on a new release candidate</h3>
+              <p>
+                When an RC version is built in Git, spin up an Epic for that
+                version, create a sub-task, and link every ticket developed on
+                that build.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
       <footer
         style={{
           textAlign: "left",
