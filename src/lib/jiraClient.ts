@@ -16,12 +16,13 @@ const EPIC_JQL = [
 ].join(" AND ");
 
 /**
- * JQL for the Console Dashboard — same shape as the Player one, with
- * "Player" swapped for "Console" so we get the corresponding
- * `Video Console Version Tests …` Epics.
+ * JQL for the Console Dashboard — same shape as the Player one but for
+ * the Console epic naming pattern, e.g. "Console - Version Tests - NEW
+ * VERSION". The Player epics include "Video " in the title; Console
+ * epics do not, so we match on "Console Version Tests" only.
  */
 const CONSOLE_EPIC_JQL = [
-  'summary ~ "Video Console Version Tests"',
+  'summary ~ "Console Version Tests"',
   "type = Epic",
   "status NOT IN (Resolved, Rejected)"
 ].join(" AND ");
