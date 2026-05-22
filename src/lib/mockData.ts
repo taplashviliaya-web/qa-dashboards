@@ -4,6 +4,7 @@ import type {
   JiraEpicSummary
 } from "@/types/jira";
 import type { PolarisWidgetRow, PolarisWidgetUrlRow } from "@/types/polaris";
+import type { E2eRunSummary } from "@/types/e2e";
 import { parsePlayerVersion } from "@/lib/parseVersion";
 
 /**
@@ -438,4 +439,145 @@ export function getMockPolarisUrlRows(
 ): PolarisWidgetUrlRow[] {
   const set = new Set(widgetIds);
   return MOCK_POLARIS_URL_ROWS.filter((r) => set.has(r.widgetId));
+}
+
+/* --------------------------- E2E (Playwright) --------------------------- */
+
+/**
+ * E2E mock-mode toggle.
+ *
+ * Active when:
+ *   - USE_MOCK_DATA is explicitly "true" (matches the Jira / Polaris pattern), OR
+ *   - any of the required GitHub env vars is missing.
+ *
+ * This lets QA preview the Console "E2E Test Results" section before the
+ * PAT and `ctrf-report` artifact are wired up.
+ */
+export function isE2eMockMode(): boolean {
+  if (process.env.USE_MOCK_DATA === "true") return true;
+  if (
+    !process.env.GITHUB_TOKEN ||
+    !process.env.E2E_REPO_OWNER ||
+    !process.env.E2E_REPO_NAME ||
+    !process.env.E2E_WORKFLOW_FILE
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Mock E2E run summary used in preview mode. Mirrors the real shape we
+ * build from CTRF + GitHub so every UI state is exercised: most tests
+ * pass, a couple fail (with realistic Playwright assertion messages),
+ * a few skip.
+ */
+export const MOCK_E2E_RUN_SUMMARY: E2eRunSummary = {
+  meta: {
+    runId: "9123456789",
+    runNumber: 247,
+    workflowName: "E2E Tests",
+    branch: "development",
+    shortSha: "a1b2c3d",
+    sha: "a1b2c3d4e5f6789012345678901234567890abcd",
+    commitMessage:
+      "feat(playlists): add drag-and-drop reordering on Playlist Editor",
+    actor: "orptru",
+    actorAvatarUrl: "https://avatars.githubusercontent.com/u/0?v=4",
+    createdAt: "2026-05-22T08:14:02Z",
+    updatedAt: "2026-05-22T08:42:18Z",
+    status: "completed",
+    conclusion: "failure",
+    htmlUrl:
+      "https://github.com/branovate-ltd/truvidConsole/actions/runs/9123456789"
+  },
+  totals: {
+    tests: 59,
+    passed: 55,
+    failed: 3,
+    skipped: 1,
+    pending: 0,
+    other: 0,
+    durationMs: 1696000,
+    passRate: 55 / 58
+  },
+  failedTests: [
+    {
+      name: "creates a playlist and reorders videos",
+      suite: "Playlist Editor",
+      durationMs: 38420,
+      message:
+        "Expected element to be visible: getByRole('button', { name: 'Save playlist' })\n" +
+        "  - waiting for getByRole('button', { name: 'Save playlist' })\n" +
+        "  - locator resolved to <button disabled>Save playlist</button>",
+      filepath: "playwright/tests/playlists/editor.spec.ts",
+      retries: 2,
+      flaky: false
+    },
+    {
+      name: "uploads a video via Inventory Hub",
+      suite: "Inventory Hub",
+      durationMs: 51900,
+      message:
+        "Test timeout of 60000ms exceeded while running 'beforeEach' hook.\n" +
+        "  Error: page.waitForResponse: Timeout 30000ms exceeded.",
+      filepath: "playwright/tests/inventory/upload.spec.ts",
+      retries: 1,
+      flaky: true
+    },
+    {
+      name: "edits widget targeting rules and saves",
+      suite: "Widget Manager",
+      durationMs: 14210,
+      message:
+        "expect(received).toContain(expected)\n" +
+        '  Expected substring: "Saved"\n' +
+        '  Received string:    "Saving…"',
+      filepath: "playwright/tests/widgets/targeting.spec.ts",
+      retries: 0,
+      flaky: false
+    }
+  ],
+  artifacts: {
+    playwrightReport: {
+      id: "1111111111",
+      name: "playwright-report",
+      sizeInBytes: 4_800_000,
+      expired: false,
+      htmlUrl:
+        "https://github.com/branovate-ltd/truvidConsole/actions/runs/9123456789#artifacts"
+    },
+    traces: {
+      id: "2222222222",
+      name: "playwright-traces",
+      sizeInBytes: 12_500_000,
+      expired: false,
+      htmlUrl:
+        "https://github.com/branovate-ltd/truvidConsole/actions/runs/9123456789#artifacts"
+    },
+    screenshots: {
+      id: "3333333333",
+      name: "test-screenshots",
+      sizeInBytes: 1_900_000,
+      expired: false,
+      htmlUrl:
+        "https://github.com/branovate-ltd/truvidConsole/actions/runs/9123456789#artifacts"
+    },
+    ctrfReport: {
+      id: "4444444444",
+      name: "ctrf-report",
+      sizeInBytes: 24_000,
+      expired: false,
+      htmlUrl:
+        "https://github.com/branovate-ltd/truvidConsole/actions/runs/9123456789#artifacts"
+    }
+  },
+  tool: {
+    name: "playwright",
+    version: "1.49.1"
+  }
+};
+
+export function getMockE2eRunSummary(): E2eRunSummary {
+  return MOCK_E2E_RUN_SUMMARY;
 }

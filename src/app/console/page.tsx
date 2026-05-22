@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { JiraEpicSummary } from "@/types/jira";
 import { EpicsTable } from "@/components/EpicsTable";
 import { ConsoleEpicDetails } from "@/components/ConsoleEpicDetails";
+import { E2eSection } from "@/components/E2eSection";
 
 type EpicsState =
   | { status: "loading" }
@@ -130,6 +131,8 @@ export default function ConsoleDashboardPage() {
       </section>
 
       {selectedKey ? <ConsoleEpicDetails key={selectedKey} epicKey={selectedKey} /> : null}
+
+      <E2eSection />
     </main>
   );
 }

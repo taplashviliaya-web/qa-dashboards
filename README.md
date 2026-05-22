@@ -263,6 +263,106 @@ Behaviour when env vars are missing:
   — runs the URL-leaderboard SQL against `POLARIS_URLS_TABLE` and prints
   the top page URLs per widget along with the URL the dashboard would
   pick.
+- `node scripts/test-github-e2e.mjs` — verifies the Console dashboard's
+  GitHub PAT can see the e2e workflow + its artifacts (see "Console /
+  E2E section" below).
+
+---
+
+## Console / E2E section
+
+The Console dashboard (`/console`) shows two things side-by-side:
+
+1. **Jira**: active "Console Version Tests" Epics and their `is blocked
+   by` linked tickets (same pattern as the Player dashboard, minus the
+   A/B Testing widgets).
+2. **E2E Test Results**: the latest Playwright run from the
+   `branovate-ltd/truvidConsole` repo's `e2e.yml` workflow, surfaced as
+   a summary card + a toggleable embedded HTML report.
+
+### How it works
+
+```
+[ truvidConsole · e2e.yml on GitHub Actions ]
+  runs `npx playwright test` with html + CTRF reporters
+  uploads artifacts:  playwright-report  playwright-traces  test-screenshots  ctrf-report
+                                                                                │
+[ qa-player-dashboard ]                                                          │
+  /api/e2e/latest-run         ── GET latest run + parse ctrf-report ────────────┤
+  /api/e2e/report/<runId>/…   ── proxy the playwright-report artifact contents ─┘
+  /console                    ── E2eSection: summary tiles, failed tests, iframe
+```
+
+The GitHub PAT lives in `.env` (server-side only) — no token ever
+reaches the browser. The proxy route downloads + unzips the
+`playwright-report` artifact once per `runId` into the OS temp
+directory, then streams files into an `<iframe>` so the official
+Playwright report (with all per-test screenshots, videos and traces)
+renders inside the dashboard.
+
+### One-time setup in `truvidConsole`
+
+The dashboard expects the workflow to upload a `ctrf-report` artifact
+in addition to its existing artifacts. Add this step at the end of the
+job in `.github/workflows/e2e.yml` (after the screenshots upload):
+
+```yaml
+      - name: Upload CTRF Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctrf-report
+          path: ctrf/ctrf-report.json
+          retention-days: 7
+```
+
+No change to `playwright.config.ts` is needed — the CTRF JSON is already
+generated for the `ctrf-io/github-test-reporter` step. We're just
+publishing it as an artifact too.
+
+### Env vars
+
+Add to `.env` (gitignored):
+
+```env
+# Fine-grained PAT with read-only Actions + Contents on the e2e repo.
+# https://github.com/settings/personal-access-tokens/new
+GITHUB_TOKEN=github_pat_...
+
+E2E_REPO_OWNER=branovate-ltd
+E2E_REPO_NAME=truvidConsole
+E2E_WORKFLOW_FILE=e2e.yml
+E2E_BRANCH=development
+```
+
+If any of these are missing the dashboard falls back to a built-in
+**mock E2E run** so the page is still demoable — a yellow banner makes
+it obvious.
+
+### Verifying the integration
+
+```bash
+node scripts/test-github-e2e.mjs
+```
+
+This script confirms:
+
+1. The PAT is valid (`GET /user`).
+2. It can see the workflow file (`GET /actions/workflows/<file>`).
+3. It can list recent runs and inspect their artifacts.
+4. The most recent run has both `playwright-report` and `ctrf-report`
+   artifacts (the dashboard needs both).
+
+### Failure modes the UI handles
+
+| State | Cause | What you see |
+|---|---|---|
+| `ready` | Latest run has a parseable CTRF artifact. | Totals tiles + failed tests + embed. |
+| `mock` (ready) | No `GITHUB_TOKEN` set. | Sample run + yellow "mock mode" banner. |
+| `not_configured` | Missing one of the 4 GitHub env vars. | List of vars to set. |
+| `no_runs` | Branch has no workflow runs. | Hint to trigger a manual run. |
+| `no_ctrf_artifact` | Run exists but `ctrf-report` missing/expired. | Other artifact links still surface; explainer banner. |
+| `error` | GitHub API call failed (auth, network, …). | Error message + Retry button. |
 
 ---
 

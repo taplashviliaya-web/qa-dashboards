@@ -25,7 +25,7 @@ const dashboards: Dashboard[] = [
     slug: "console",
     title: "Console Version",
     description:
-      "Track Video Console version-tests Epics from Jira and their related tickets.",
+      "Console version-tests Epics + Jira links, plus the latest Playwright E2E run from truvidConsole/e2e.yml.",
     status: "ready",
     emoji: "💻",
     funnySentence: ""
@@ -149,11 +149,6 @@ export default function DashboardHub() {
         </p>
       </footer>
 
-      <button type="button" className="ask-ai" aria-label="Ask AI">
-        <span className="spark" aria-hidden />
-        Ask AI
-        <kbd>⌘K</kbd>
-      </button>
     </main>
   );
 }
