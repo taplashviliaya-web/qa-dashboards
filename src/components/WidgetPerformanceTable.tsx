@@ -56,6 +56,21 @@ function fmtPercent(n: number): string {
 }
 
 /**
+ * Render the URL as `domain/last-path-segment` so the table stays scannable.
+ * The full URL is still available on hover (title) and in the link href.
+ */
+function shortUrlLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    const segments = u.pathname.split("/").filter(Boolean);
+    const last = segments[segments.length - 1] ?? "";
+    return last ? `${u.hostname}/…/${last}` : u.hostname;
+  } catch {
+    return url;
+  }
+}
+
+/**
  * Format a B-vs-A delta as `+$0.39 (+19.4%)` / `−$0.09 (−13.2%)` / `—`,
  * with a class hinting at color. Returns "—" when either side is zero or
  * not finite (e.g. Missing Data rows), to avoid divide-by-zero and noisy
@@ -126,6 +141,7 @@ export function WidgetPerformanceTable({ rows }: Props) {
             <tr>
               <th>Widget ID</th>
               <th>Widget Name</th>
+              <th>Top Page URL</th>
               <th>Approval</th>
               <th className="number">A Revenue eCPM</th>
               <th className="number">B Revenue eCPM</th>
@@ -164,6 +180,20 @@ export function WidgetPerformanceTable({ rows }: Props) {
                 <tr key={row.widgetId} className={`row-status-${row.color}`}>
                   <td className="widget-id">{row.widgetId}</td>
                   <td>{row.widgetName}</td>
+                  <td className="page-url-cell">
+                    {row.topPageUrl ? (
+                      <a
+                        href={row.topPageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={row.topPageUrl}
+                      >
+                        {shortUrlLabel(row.topPageUrl)}
+                      </a>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </td>
                   <td>
                     <StatusBadge
                       color={row.color}

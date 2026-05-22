@@ -1,7 +1,9 @@
 import type {
   PolarisQueryResult,
   PolarisWidgetQueryInput,
-  PolarisWidgetRow
+  PolarisWidgetRow,
+  PolarisWidgetUrlRow,
+  PolarisWidgetUrlsResult
 } from "@/types/polaris";
 
 /**
@@ -34,6 +36,13 @@ type PolarisConfig = {
   table: string;
 };
 
+type PolarisUrlsConfig = {
+  baseUrl: string;
+  apiToken: string;
+  projectId: string;
+  table: string;
+};
+
 function readPolarisConfig(): PolarisConfig | undefined {
   const baseUrl = process.env.POLARIS_BASE_URL?.replace(/\/$/, "");
   const apiToken = process.env.POLARIS_API_TOKEN;
@@ -41,6 +50,19 @@ function readPolarisConfig(): PolarisConfig | undefined {
   const table = process.env.POLARIS_TABLE;
   if (!baseUrl || !apiToken || !projectId || !table) return undefined;
   return { baseUrl, apiToken, projectId, table };
+}
+
+/**
+ * The URL-events table reuses the same Polaris project/credentials as the
+ * main analytics table — only the table name differs. We default it to
+ * `urls` since that's what the sample query uses, but it can be overridden
+ * with POLARIS_URLS_TABLE.
+ */
+function readPolarisUrlsConfig(): PolarisUrlsConfig | undefined {
+  const base = readPolarisConfig();
+  if (!base) return undefined;
+  const table = process.env.POLARIS_URLS_TABLE || "urls";
+  return { ...base, table };
 }
 
 /** Build the `Authorization: Basic ...` header value for a Polaris API key. */
@@ -134,6 +156,84 @@ async function queryPolarisSql(
   return mapPolarisRows(json);
 }
 
+/**
+ * Per-widget top page-URL query against the Polaris `urls` table.
+ *
+ * Mirrors the sample SQL the QA team runs in the Polaris UI:
+ *
+ *   SELECT page_url, COUNT(*) AS cnt
+ *   FROM   urls
+ *   WHERE  widget_id = '9378'
+ *     AND  __time BETWEEN ...
+ *   GROUP  BY page_url
+ *   ORDER  BY cnt DESC
+ *
+ * Here we batch all requested widget IDs into a single query and let the
+ * caller pick the top URL per widget (so the table only has to be scanned
+ * once per dashboard refresh).
+ */
+async function queryPolarisUrlsSql(
+  config: PolarisUrlsConfig,
+  input: PolarisWidgetQueryInput
+): Promise<PolarisWidgetUrlRow[]> {
+  if (input.widgetIds.length === 0) return [];
+
+  const startTs = `${input.startDate} 00:00:00`;
+  const endTs = `${addOneDay(input.endDate)} 00:00:00`;
+
+  const widgetPlaceholders = input.widgetIds.map(() => "?").join(", ");
+  const table = quoteIdent(config.table);
+
+  const sql = `
+    SELECT
+      CAST("widget_id" AS VARCHAR) AS "widgetId",
+      CAST("page_url" AS VARCHAR)  AS "pageUrl",
+      COUNT(*) AS "eventCount"
+    FROM ${table}
+    WHERE CAST("widget_id" AS VARCHAR) IN (${widgetPlaceholders})
+      AND __time >= TIMESTAMP '${startTs}'
+      AND __time <  TIMESTAMP '${endTs}'
+    GROUP BY 1, 2
+    ORDER BY 1, "eventCount" DESC
+  `;
+
+  const parameters = input.widgetIds.map((id) => ({
+    type: "VARCHAR",
+    value: id
+  }));
+
+  const res = await fetch(
+    `${config.baseUrl}/v1/projects/${config.projectId}/query/sql`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: basicAuthHeader(config.apiToken),
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({ query: sql, parameters, resultFormat: "object" })
+    }
+  );
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(
+      `Polaris URLs SQL failed (${res.status} ${res.statusText}): ${text.slice(0, 500)}`
+    );
+  }
+
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Polaris URLs SQL returned non-JSON response: ${text.slice(0, 200)}`
+    );
+  }
+
+  return mapPolarisUrlRows(json);
+}
+
 /** Coerce unknown numeric-like values into a finite number (or 0). */
 function toNumber(value: unknown): number {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -175,6 +275,34 @@ export function mapPolarisRows(rawResponse: unknown): PolarisWidgetRow[] {
 }
 
 /**
+ * Map Polaris SQL response rows into our normalized `PolarisWidgetUrlRow`.
+ * Accepts both camelCase aliases (what our SQL emits) and snake_case for
+ * robustness against future query changes.
+ */
+export function mapPolarisUrlRows(rawResponse: unknown): PolarisWidgetUrlRow[] {
+  if (!Array.isArray(rawResponse)) return [];
+  const out: PolarisWidgetUrlRow[] = [];
+  for (const raw of rawResponse) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    const widgetId = r.widgetId ?? r.widget_id;
+    const pageUrl = r.pageUrl ?? r.page_url;
+    if (
+      (typeof widgetId !== "string" && typeof widgetId !== "number") ||
+      typeof pageUrl !== "string"
+    ) {
+      continue;
+    }
+    out.push({
+      widgetId: String(widgetId),
+      pageUrl,
+      eventCount: toNumber(r.eventCount ?? r.event_count ?? r.count)
+    });
+  }
+  return out;
+}
+
+/**
  * Public entry point used by API routes.
  *
  * Always returns a `PolarisQueryResult` (never throws for "not configured")
@@ -190,6 +318,24 @@ export async function getWidgetReport(
     return { rows: [] };
   }
   const rows = await queryPolarisSql(config, input);
+  return { rows };
+}
+
+/**
+ * Fetch (widget_id, page_url) aggregates from the Polaris `urls` table for
+ * the given widgets + date range, ordered by event count desc per widget.
+ *
+ * Returns an empty result when Polaris isn't configured — same graceful
+ * fallback as `getWidgetReport`.
+ */
+export async function getWidgetTopUrls(
+  input: PolarisWidgetQueryInput
+): Promise<PolarisWidgetUrlsResult> {
+  const config = readPolarisUrlsConfig();
+  if (!config) {
+    return { rows: [] };
+  }
+  const rows = await queryPolarisUrlsSql(config, input);
   return { rows };
 }
 

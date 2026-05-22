@@ -2,9 +2,13 @@ import { NextResponse } from "next/server";
 import type { ParsedWidget } from "@/types/jira";
 import type { WidgetReportResponse } from "@/types/dashboard";
 import { normalizeDateRange } from "@/lib/dateRange";
-import { getWidgetReport } from "@/lib/polarisClient";
-import { buildWidgetReportRow } from "@/lib/widgetReport";
-import { getMockPolarisRows, isMockMode } from "@/lib/mockData";
+import { getWidgetReport, getWidgetTopUrls } from "@/lib/polarisClient";
+import { buildTopUrlByWidget, buildWidgetReportRow } from "@/lib/widgetReport";
+import {
+  getMockPolarisRows,
+  getMockPolarisUrlRows,
+  isMockMode
+} from "@/lib/mockData";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +38,28 @@ export async function POST(request: Request) {
 
   try {
     const widgetIds = widgets.map((w) => w.widgetId);
-    const rows = isMockMode()
-      ? getMockPolarisRows(widgetIds)
-      : (await getWidgetReport({ widgetIds, startDate, endDate })).rows;
+
+    // Fetch A/B analytics and (widget -> page_url) aggregates in parallel.
+    // The URLs query is a "nice to have" — if it fails we still return the
+    // approval rows without URLs rather than failing the whole response.
+    const [analyticsResult, urlsResult] = await Promise.all([
+      isMockMode()
+        ? Promise.resolve({ rows: getMockPolarisRows(widgetIds) })
+        : getWidgetReport({ widgetIds, startDate, endDate }),
+      isMockMode()
+        ? Promise.resolve({ rows: getMockPolarisUrlRows(widgetIds) })
+        : getWidgetTopUrls({ widgetIds, startDate, endDate }).catch(() => ({
+            rows: []
+          }))
+    ]);
+
+    const rows = analyticsResult.rows;
+    const topUrlByWidget = buildTopUrlByWidget(urlsResult.rows);
 
     const results = widgets.map((widget) => {
       const widgetRows = rows.filter((r) => r.widgetId === widget.widgetId);
-      return buildWidgetReportRow(widget, widgetRows);
+      const topPageUrl = topUrlByWidget[widget.widgetId] ?? null;
+      return buildWidgetReportRow(widget, widgetRows, topPageUrl);
     });
 
     return NextResponse.json<WidgetReportResponse>({ results });

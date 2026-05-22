@@ -46,6 +46,10 @@ export type WidgetReportRow = {
   approvalStatus: ApprovalStatus | string;
   color: StatusColor | string;
   comment: string;
+  // Top video / page URL this widget is running on, picked from the Polaris
+  // `urls` table for the same date range. `null` when no URL data is found
+  // for the widget (no events in that window, or Polaris unavailable).
+  topPageUrl: string | null;
 };
 
 export type WidgetReportResponse = {

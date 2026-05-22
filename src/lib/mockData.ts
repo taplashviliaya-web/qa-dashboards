@@ -2,7 +2,7 @@ import type {
   JiraEpicDetails,
   JiraEpicSummary
 } from "@/types/jira";
-import type { PolarisWidgetRow } from "@/types/polaris";
+import type { PolarisWidgetRow, PolarisWidgetUrlRow } from "@/types/polaris";
 import { parsePlayerVersion } from "@/lib/parseVersion";
 
 /**
@@ -283,4 +283,45 @@ const MOCK_POLARIS_ROWS: PolarisWidgetRow[] = [
 export function getMockPolarisRows(widgetIds: string[]): PolarisWidgetRow[] {
   const set = new Set(widgetIds);
   return MOCK_POLARIS_ROWS.filter((r) => set.has(r.widgetId));
+}
+
+/**
+ * Mock (widget_id, page_url) aggregates. Mirrors the shape of the live
+ * `urls` table so the dashboard's "Top Page URL" column has something
+ * realistic to render in mock mode. Widget 9921 is intentionally omitted
+ * to exercise the no-URL branch in the UI.
+ */
+const MOCK_POLARIS_URL_ROWS: PolarisWidgetUrlRow[] = [
+  {
+    widgetId: "13837",
+    pageUrl: "https://www.birgun.net/haber/spor-gundemi-canli-yayin",
+    eventCount: 58
+  },
+  {
+    widgetId: "13837",
+    pageUrl: "https://www.birgun.net/haber/ekonomi-bulteni",
+    eventCount: 42
+  },
+  {
+    widgetId: "7875",
+    pageUrl: "https://www.footballchannel.jp/2026/05/21/post-feature-japan",
+    eventCount: 71
+  },
+  {
+    widgetId: "6379",
+    pageUrl: "https://www.setn.com/News.aspx?NewsID=entertainment-top",
+    eventCount: 35
+  },
+  {
+    widgetId: "10255",
+    pageUrl: "https://www.haberturk.com/gundem/haber/canli-yayin",
+    eventCount: 49
+  }
+];
+
+export function getMockPolarisUrlRows(
+  widgetIds: string[]
+): PolarisWidgetUrlRow[] {
+  const set = new Set(widgetIds);
+  return MOCK_POLARIS_URL_ROWS.filter((r) => set.has(r.widgetId));
 }

@@ -1,7 +1,31 @@
 import type { ParsedWidget } from "@/types/jira";
-import type { PolarisWidgetRow } from "@/types/polaris";
+import type { PolarisWidgetRow, PolarisWidgetUrlRow } from "@/types/polaris";
 import type { WidgetReportRow } from "@/types/dashboard";
 import { evaluateWidgetPerformance } from "@/lib/approvalLogic";
+
+/**
+ * Reduce a flat list of (widgetId, pageUrl, eventCount) rows to a
+ * `widgetId -> topPageUrl` map by picking the URL with the highest event
+ * count per widget. The Polaris query already orders by eventCount DESC
+ * within each widget, but we don't rely on that — we re-pick defensively.
+ */
+export function buildTopUrlByWidget(
+  rows: PolarisWidgetUrlRow[]
+): Record<string, string> {
+  const best: Record<string, PolarisWidgetUrlRow> = {};
+  for (const r of rows) {
+    if (!r.pageUrl) continue;
+    const current = best[r.widgetId];
+    if (!current || r.eventCount > current.eventCount) {
+      best[r.widgetId] = r;
+    }
+  }
+  const out: Record<string, string> = {};
+  for (const [widgetId, row] of Object.entries(best)) {
+    out[widgetId] = row.pageUrl;
+  }
+  return out;
+}
 
 /**
  * From all Polaris rows for a given widget, pick the A (control) and B
@@ -42,13 +66,17 @@ const NO_DATA_COMMENT = "No Polaris data found for this widget and selected date
  * Build a single widget report row from the Polaris rows for that widget.
  * Handles all the "missing data" branches up-front so `evaluateWidgetPerformance`
  * only runs against real, complete data.
+ *
+ * `topPageUrl` is purely informational and never affects the approval
+ * verdict — it just lets the UI link straight to a page the widget runs on.
  */
 export function buildWidgetReportRow(
   widget: ParsedWidget,
-  rows: PolarisWidgetRow[]
+  rows: PolarisWidgetRow[],
+  topPageUrl: string | null = null
 ): WidgetReportRow {
   if (rows.length === 0) {
-    return missingDataRow(widget, NO_DATA_COMMENT);
+    return missingDataRow(widget, NO_DATA_COMMENT, { topPageUrl });
   }
 
   const { a, b } = pickAbVersions(rows);
@@ -62,7 +90,8 @@ export function buildWidgetReportRow(
       aRevenueEcpm: a?.revenueEcpm ?? 0,
       bRevenueEcpm: b?.revenueEcpm ?? 0,
       aRevenue: a?.revenue ?? 0,
-      bRevenue: b?.revenue ?? 0
+      bRevenue: b?.revenue ?? 0,
+      topPageUrl
     });
   }
 
@@ -99,7 +128,8 @@ export function buildWidgetReportRow(
     splitStatus: evaluation.splitStatus,
     approvalStatus: evaluation.approvalStatus,
     color: evaluation.color,
-    comment: evaluation.comment
+    comment: evaluation.comment,
+    topPageUrl
   };
 }
 
@@ -121,6 +151,7 @@ function missingDataRow(
     bRevenueEcpm: 0,
     aRevenue: 0,
     bRevenue: 0,
+    topPageUrl: null,
     ...partial,
     splitStatus: "missing_data",
     approvalStatus: "missing_data",

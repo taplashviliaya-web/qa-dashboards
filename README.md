@@ -113,6 +113,9 @@ POLARIS_BASE_URL=https://<org>.<region>.<cloud>.api.imply.io
 POLARIS_API_TOKEN=pok_xxx
 POLARIS_PROJECT_ID=<project-uuid>
 POLARIS_TABLE=<druid-table-name>
+# Druid table that maps widget_id -> page_url events. Used to surface the
+# top video URL each widget runs on. Defaults to `urls` when unset.
+POLARIS_URLS_TABLE=urls
 
 DEFAULT_REPORT_DATE_MODE=today
 AUTO_REFRESH_ENABLED=false
@@ -210,8 +213,32 @@ Public surface used by API routes:
 
 ```ts
 getWidgetReport({ widgetIds, startDate, endDate }): Promise<{ rows: PolarisWidgetRow[] }>
+getWidgetTopUrls({ widgetIds, startDate, endDate }): Promise<{ rows: PolarisWidgetUrlRow[] }>
 isPolarisConfigured(): boolean
 ```
+
+### Top page URL per widget
+
+Alongside the A/B numbers we also query the `POLARIS_URLS_TABLE` (default
+`urls`) to surface the top page each widget is currently running on:
+
+```sql
+SELECT
+  CAST("widget_id" AS VARCHAR) AS "widgetId",
+  CAST("page_url"  AS VARCHAR) AS "pageUrl",
+  COUNT(*) AS "eventCount"
+FROM "urls"
+WHERE CAST("widget_id" AS VARCHAR) IN (?, ?, ...)
+  AND __time >= TIMESTAMP '<start> 00:00:00'
+  AND __time <  TIMESTAMP '<endDate + 1> 00:00:00'
+GROUP BY 1, 2
+ORDER BY 1, "eventCount" DESC
+```
+
+The dashboard picks the URL with the highest `eventCount` per `widgetId`
+and renders it in the **Top Page URL** column as a clickable link. If the
+URLs query fails or returns nothing for a widget, the column shows `—`
+and the rest of the row is unaffected.
 
 Behaviour when env vars are missing:
 
@@ -229,6 +256,13 @@ Behaviour when env vars are missing:
 - `node scripts/inspect-polaris.mjs` — prints the columns of
   `POLARIS_TABLE`, its `__time` range, and a sample row. Useful when the
   table schema changes.
+- `node scripts/test-widget-query.mjs <widgetId> [...] [--from] [--to]` —
+  runs the dashboard's A/B SQL against `POLARIS_TABLE` for the given
+  widgets.
+- `node scripts/test-widget-urls.mjs <widgetId> [...] [--from] [--to] [--limit]`
+  — runs the URL-leaderboard SQL against `POLARIS_URLS_TABLE` and prints
+  the top page URLs per widget along with the URL the dashboard would
+  pick.
 
 ---
 

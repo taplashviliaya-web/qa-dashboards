@@ -283,6 +283,20 @@ table.data-table td.comment-cell {
   white-space: normal;
 }
 
+table.data-table td.page-url-cell {
+  max-width: 320px;
+  font-size: 12px;
+}
+
+table.data-table td.page-url-cell a {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 table.data-table td.ecpm-cell {
   white-space: nowrap;
 }
