@@ -5,8 +5,8 @@ export default function ConsolePage() {
     <ComingSoonPage
       title="Console Version"
       emoji="💻"
-      description="Debug logs, real-time telemetry, and player events"
-      funnySentence="We're teaching the console to talk back. It's been quiet for too long."
+      description="Manage core video platform configurations, including widgets, playlists, inventory, and video assets"
+      funnySentence="Wrangling widgets, herding playlists, and counting inventory — turns out video assets have opinions too."
     />
   );
 }

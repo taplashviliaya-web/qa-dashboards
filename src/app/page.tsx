@@ -24,10 +24,10 @@ const dashboards: Dashboard[] = [
   {
     slug: "console",
     title: "Console Version",
-    description: "Debug logs, real-time telemetry, and player events",
+    description: "Manage core video platform configurations, including widgets, playlists, inventory, and video assets",
     status: "coming_soon",
     emoji: "💻",
-    funnySentence: "We're teaching the console to talk back. It's been quiet for too long."
+    funnySentence: "Wrangling widgets, herding playlists, and counting inventory — turns out video assets have opinions too."
   },
   {
     slug: "admin",
