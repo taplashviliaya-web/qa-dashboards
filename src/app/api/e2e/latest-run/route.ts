@@ -21,6 +21,7 @@ import { NextResponse } from "next/server";
 import type { E2eLatestRunResponse } from "@/types/e2e";
 import {
   getLatestWorkflowRun,
+  getWorkflowDispatchUrl,
   listRunArtifacts,
   missingGithubEnv,
   readGithubConfig
@@ -43,6 +44,7 @@ export const dynamic = "force-dynamic";
  */
 type CacheEntry = {
   runId: string;
+  /** Cache only ever stores the "ready" variant (other states aren't worth caching). */
   payload: Extract<E2eLatestRunResponse, { state: "ready" }>;
   createdAtMs: number;
 };
@@ -50,12 +52,15 @@ let SUMMARY_CACHE: CacheEntry | undefined;
 const CACHE_TTL_MS = 60_000; // 60s — short enough to feel fresh, long enough to coalesce.
 
 export async function GET(): Promise<NextResponse<E2eLatestRunResponse>> {
+  const workflowDispatchUrl = getWorkflowDispatchUrl();
+
   if (isE2eMockMode()) {
     return NextResponse.json<E2eLatestRunResponse>({
       state: "ready",
       summary: getMockE2eRunSummary(),
       cached: false,
-      mock: true
+      mock: true,
+      workflowDispatchUrl
     });
   }
 
@@ -63,7 +68,8 @@ export async function GET(): Promise<NextResponse<E2eLatestRunResponse>> {
   if (!cfg) {
     return NextResponse.json<E2eLatestRunResponse>({
       state: "not_configured",
-      missingEnv: missingGithubEnv()
+      missingEnv: missingGithubEnv(),
+      workflowDispatchUrl
     });
   }
 
@@ -72,7 +78,8 @@ export async function GET(): Promise<NextResponse<E2eLatestRunResponse>> {
     if (!meta) {
       return NextResponse.json<E2eLatestRunResponse>({
         state: "no_runs",
-        message: `No workflow runs found for ${cfg.workflowFile} on ${cfg.branch}.`
+        message: `No workflow runs found for ${cfg.workflowFile} on ${cfg.branch}.`,
+        workflowDispatchUrl
       });
     }
 
@@ -84,7 +91,8 @@ export async function GET(): Promise<NextResponse<E2eLatestRunResponse>> {
     ) {
       return NextResponse.json<E2eLatestRunResponse>({
         ...SUMMARY_CACHE.payload,
-        cached: true
+        cached: true,
+        workflowDispatchUrl
       });
     }
 
@@ -102,7 +110,8 @@ export async function GET(): Promise<NextResponse<E2eLatestRunResponse>> {
         state: "no_ctrf_artifact",
         message,
         meta,
-        artifacts: namedArtifacts
+        artifacts: namedArtifacts,
+        workflowDispatchUrl
       });
     }
 
@@ -118,7 +127,8 @@ export async function GET(): Promise<NextResponse<E2eLatestRunResponse>> {
           `Run #${meta.runNumber} uploaded a ctrf-report artifact but it ` +
           "didn't contain a parseable JSON file.",
         meta,
-        artifacts: namedArtifacts
+        artifacts: namedArtifacts,
+        workflowDispatchUrl
       });
     }
 
@@ -127,7 +137,8 @@ export async function GET(): Promise<NextResponse<E2eLatestRunResponse>> {
       state: "ready",
       summary,
       cached: false,
-      mock: false
+      mock: false,
+      workflowDispatchUrl
     };
     SUMMARY_CACHE = {
       runId: meta.runId,
@@ -139,7 +150,8 @@ export async function GET(): Promise<NextResponse<E2eLatestRunResponse>> {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json<E2eLatestRunResponse>({
       state: "error",
-      error: message
+      error: message,
+      workflowDispatchUrl
     });
   }
 }

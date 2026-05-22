@@ -145,11 +145,11 @@ export type E2eRunSummary = {
 };
 
 /**
- * What `/api/e2e/latest-run` returns. The UI always gets a shape it can
- * render — even when the integration is misconfigured or no usable run
- * exists yet.
+ * Discriminated variants of the latest-run API response. The actual API
+ * response is `E2eLatestRunResponseVariant & E2eLatestRunResponseCommon`
+ * — shared fields live on the common side so every state can carry them.
  */
-export type E2eLatestRunResponse =
+type E2eLatestRunResponseVariant =
   | {
       state: "ready";
       summary: E2eRunSummary;
@@ -182,3 +182,22 @@ export type E2eLatestRunResponse =
       state: "error";
       error: string;
     };
+
+/** Fields included on every state of the response. */
+export type E2eLatestRunResponseCommon = {
+  /**
+   * Link to the GitHub Actions UI for this workflow. Clicking opens the
+   * workflow's runs page where users can click "Run workflow" to trigger
+   * a new workflow_dispatch event. Lives on every response state so the
+   * UI can always offer a "Run on GitHub" button.
+   */
+  workflowDispatchUrl: string;
+};
+
+/**
+ * What `/api/e2e/latest-run` returns. The UI always gets a shape it can
+ * render — even when the integration is misconfigured or no usable run
+ * exists yet.
+ */
+export type E2eLatestRunResponse =
+  E2eLatestRunResponseVariant & E2eLatestRunResponseCommon;

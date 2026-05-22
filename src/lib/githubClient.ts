@@ -105,6 +105,25 @@ export function isGithubConfigured(): boolean {
   return readGithubConfig() !== undefined;
 }
 
+/**
+ * Build the public URL of the workflow on github.com — the page where
+ * the "Run workflow" button lives. Used by the UI to offer a one-click
+ * "Run e2e on GitHub" shortcut without needing Actions:write on the PAT.
+ *
+ * Reads `E2E_REPO_OWNER` / `E2E_REPO_NAME` / `E2E_WORKFLOW_FILE` from
+ * env, falling back to the values this dashboard ships for so the
+ * button still works in mock mode (no env vars set).
+ */
+export function getWorkflowDispatchUrl(): string {
+  const owner = process.env.E2E_REPO_OWNER || "branovate-ltd";
+  const repo = process.env.E2E_REPO_NAME || "truvidConsole";
+  const file = process.env.E2E_WORKFLOW_FILE || "e2e.yml";
+  return (
+    `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}` +
+    `/actions/workflows/${encodeURIComponent(file)}`
+  );
+}
+
 const GH_API = "https://api.github.com";
 const GH_API_VERSION = "2022-11-28";
 

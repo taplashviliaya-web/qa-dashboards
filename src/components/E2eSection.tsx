@@ -48,7 +48,11 @@ export function E2eSection() {
         status: "loaded",
         payload: {
           state: "error",
-          error: err instanceof Error ? err.message : "Failed to fetch e2e run"
+          error: err instanceof Error ? err.message : "Failed to fetch e2e run",
+          // Synthesize a sensible fallback so the "Run on GitHub" button is
+          // still available when the API itself is unreachable.
+          workflowDispatchUrl:
+            "https://github.com/branovate-ltd/truvidConsole/actions/workflows/e2e.yml"
         }
       });
     }
@@ -71,6 +75,9 @@ export function E2eSection() {
     setShowReport(false);
   }, [runIdForIframe]);
 
+  const workflowDispatchUrl =
+    state.status === "loaded" ? state.payload.workflowDispatchUrl : undefined;
+
   return (
     <section className="panel" style={{ marginTop: 24 }}>
       <div className="panel-header">
@@ -83,6 +90,31 @@ export function E2eSection() {
           </div>
         </div>
         <div className="panel-actions">
+          {workflowDispatchUrl ? (
+            <a
+              href={workflowDispatchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Opens the workflow page on github.com — click 'Run workflow' there to trigger a new run."
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 14px",
+                fontSize: 13,
+                fontWeight: 500,
+                border: "1px solid var(--border-strong)",
+                background: "var(--panel)",
+                color: "var(--text)",
+                borderRadius: "var(--radius-sm)",
+                textDecoration: "none"
+              }}
+            >
+              <span aria-hidden>▶</span>
+              Run e2e on GitHub
+              <span aria-hidden style={{ fontSize: 11 }}>↗</span>
+            </a>
+          ) : null}
           <button
             className="primary"
             onClick={() => void load()}
@@ -302,7 +334,12 @@ function RunMetaCard(props: {
           Run #{meta.runNumber}
         </a>
       </div>
-      <div className="muted" style={{ fontSize: 12 }}>
+      <div
+        className="muted"
+        style={{ fontSize: 12 }}
+        title="Commit the workflow ran against"
+      >
+        tested{" "}
         <code>{meta.shortSha}</code> on{" "}
         <code>{meta.branch}</code>
         {meta.commitMessage ? ` — ${truncate(meta.commitMessage, 80)}` : ""}
