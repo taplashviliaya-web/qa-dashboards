@@ -39,36 +39,76 @@ export default function PlayerDashboardPage() {
     void loadEpics();
   }, [loadEpics]);
 
+  const epicCount = state.status === "ready" ? state.epics.length : null;
+
   return (
     <main className="app-shell">
+      <Link href="/" className="back-link">
+        <span aria-hidden>←</span> Back to Hub
+      </Link>
+
       <header className="app-header">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+        <div className="hstack-between" style={{ alignItems: "flex-start" }}>
           <div>
-            <h1>QA Player Version Testing Dashboard</h1>
+            <div className="hero-eyebrow" style={{ marginBottom: 12 }}>
+              <span className="dot" />
+              <span>Player · Version Testing</span>
+            </div>
+            <h1>
+              QA Player <span className="text-aurora">Version Testing</span>
+            </h1>
             <p>
-              Active Video Player Version-Tests Epics from Jira, with A/B widget performance from
-              Polaris.
+              Active Video Player version-test Epics from Jira, paired with A/B widget
+              performance from Polaris.
             </p>
           </div>
-          <Link href="/" style={{ marginTop: 4, fontSize: 13, color: "var(--link)" }}>
-            ← Back to Hub
-          </Link>
         </div>
       </header>
 
       {isMock ? (
         <div className="info">
-          <b>Mock mode is on.</b> No Jira credentials detected (or{" "}
-          <code>USE_MOCK_DATA=true</code>), so this preview is showing sample Epics and Polaris
-          rows. Add your <code>.env.local</code> values to switch to live data.
+          <div>
+            <b>Mock mode is on.</b>{" "}
+            <span className="muted">
+              No Jira credentials detected (or <code>USE_MOCK_DATA=true</code>) — showing
+              sample Epics and Polaris rows. Add your <code>.env.local</code> values to
+              switch to live data.
+            </span>
+          </div>
         </div>
       ) : null}
+
+      <div className="ai-banner" role="status" aria-live="polite">
+        <span className="spark" aria-hidden />
+        <div>
+          {state.status === "ready" ? (
+            <>
+              <b>AI summary</b>{" "}
+              <span className="muted">
+                Currently tracking{" "}
+                <b style={{ color: "var(--text)" }}>
+                  {epicCount} active Player Epic{epicCount === 1 ? "" : "s"}
+                </b>
+                . Select a row to view its widget IDs and Polaris A/B performance.
+              </span>
+            </>
+          ) : state.status === "loading" ? (
+            <span className="shimmer">Analyzing active Player Epics…</span>
+          ) : (
+            <span className="muted">AI summary unavailable while Epics fail to load.</span>
+          )}
+        </div>
+      </div>
 
       <section className="panel">
         <div className="panel-header">
           <h2>Active Player Version Epics</h2>
           <div className="panel-actions">
-            <button onClick={() => void loadEpics()} disabled={state.status === "loading"}>
+            <button
+              className="primary"
+              onClick={() => void loadEpics()}
+              disabled={state.status === "loading"}
+            >
               {state.status === "loading" ? "Loading…" : "Refresh Epics"}
             </button>
           </div>

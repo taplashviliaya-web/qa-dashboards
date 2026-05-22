@@ -10,11 +10,18 @@ const COLOR_TO_CLASS: Record<string, string> = {
 type Props = {
   color?: StatusColor | string;
   label: string;
+  /** Render a leading colored dot inside the pill. Defaults to true. */
+  withDot?: boolean;
 };
 
-export function StatusBadge({ color, label }: Props) {
+export function StatusBadge({ color, label, withDot = true }: Props) {
   const cls = (color && COLOR_TO_CLASS[color]) ?? "badge-neutral";
-  return <span className={`badge ${cls}`}>{label}</span>;
+  return (
+    <span className={`badge ${cls}`}>
+      {withDot ? <span className="badge-dot" aria-hidden /> : null}
+      {label}
+    </span>
+  );
 }
 
 /** Map Jira status names to a sensible color. Falls back to neutral. */
