@@ -106,10 +106,13 @@ JIRA_BASE_URL=https://branovate.atlassian.net
 JIRA_EMAIL=you@branovate.com
 JIRA_API_TOKEN=your-jira-api-token
 
-# Leave Polaris blank for now — the dashboard will show "Missing Data" per
-# widget until the client is implemented.
-POLARIS_BASE_URL=
-POLARIS_API_TOKEN=
+# Polaris (Imply) — required for real A/B performance numbers.
+# If any of these are blank, the dashboard falls back to "Missing Data"
+# per widget so the rest of the UI keeps working.
+POLARIS_BASE_URL=https://<org>.<region>.<cloud>.api.imply.io
+POLARIS_API_TOKEN=pok_xxx
+POLARIS_PROJECT_ID=<project-uuid>
+POLARIS_TABLE=<druid-table-name>
 
 DEFAULT_REPORT_DATE_MODE=today
 AUTO_REFRESH_ENABLED=false
@@ -186,28 +189,46 @@ Output: per-widget evaluation rows (see `WidgetReportRow` in
 
 ---
 
-## Polaris client (placeholder)
+## Polaris client
 
-`src/lib/polarisClient.ts` is intentionally a clean wrapper. It already
-exposes the public function the API route uses:
+`src/lib/polarisClient.ts` talks to the Polaris synchronous SQL endpoint
+(`POST /v1/projects/<id>/query/sql`) and aggregates per widget + version:
+
+| Field          | Source                                          |
+|----------------|-------------------------------------------------|
+| `widgetId`     | `widget_id`                                     |
+| `version`      | `version`                                       |
+| `serverCalls`  | `SUM(server_calls)`                             |
+| `revenue`      | `SUM(revenue)`                                  |
+| `revenueEcpm`  | `SUM(revenue) / SUM(server_calls) * 1000`       |
+
+The time filter uses `__time >= TIMESTAMP '<start> 00:00:00'` and an
+exclusive upper bound of `<endDate + 1 day> 00:00:00`, so the full local
+day on both ends is included.
+
+Public surface used by API routes:
 
 ```ts
 getWidgetReport({ widgetIds, startDate, endDate }): Promise<{ rows: PolarisWidgetRow[] }>
+isPolarisConfigured(): boolean
 ```
 
-When you have exact Polaris API details, implement the real call inside
-`queryPolarisCached` (the function body has a clear placeholder + a link
-to the [cached-query docs](https://docs.imply.io/polaris/api-query-precached/)),
-and map the response inside `mapPolarisRows`. Nothing else in the app
-needs to change.
+Behaviour when env vars are missing:
 
-Until then:
+- If any of `POLARIS_BASE_URL` / `POLARIS_API_TOKEN` /
+  `POLARIS_PROJECT_ID` / `POLARIS_TABLE` is **not set**, the dashboard
+  shows `Missing Data` per widget — the rest of the UI is fully
+  functional.
+- HTTP / SQL errors from Polaris are surfaced in the API response so
+  they're visible during development.
 
-- If `POLARIS_BASE_URL` / `POLARIS_API_TOKEN` are **not set**, the
-  dashboard simply shows `Missing Data` per widget — the rest of the UI
-  is fully functional.
-- If they **are** set, the dashboard surfaces a clear error reminding you
-  the Polaris integration isn't implemented yet.
+### Helper scripts
+
+- `node scripts/test-credentials.mjs` — pings Jira `/myself` and Polaris
+  `/v1/projects` to verify both tokens.
+- `node scripts/inspect-polaris.mjs` — prints the columns of
+  `POLARIS_TABLE`, its `__time` range, and a sample row. Useful when the
+  table schema changes.
 
 ---
 

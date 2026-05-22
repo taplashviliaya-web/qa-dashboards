@@ -5,88 +5,182 @@ import type {
 } from "@/types/polaris";
 
 /**
- * Polaris (Imply) Analytics client — PLACEHOLDER.
+ * Polaris (Imply) Analytics client.
  *
- * Real Polaris API details (endpoint, auth, payload shape) will be provided
- * later. To keep the rest of the dashboard fully functional in the meantime,
- * this client:
+ * Talks to the Polaris synchronous SQL endpoint
+ * (`POST /v1/projects/<id>/query/sql`) to aggregate Player A/B test
+ * metrics per widget + version:
  *
- *   1. Reads `POLARIS_BASE_URL` / `POLARIS_API_TOKEN` from env.
- *   2. If they're configured, calls `queryPolarisCached` — currently a stub
- *      that throws so we don't silently send invalid requests.
- *   3. If they're not configured, returns an empty result set so the UI can
- *      degrade gracefully and show a "missing data" message per widget.
+ *   widgetId     <- widget_id
+ *   version      <- version
+ *   serverCalls  <- SUM(server_calls)
+ *   revenue      <- SUM(revenue)
+ *   revenueEcpm  <- SUM(revenue) / SUM(server_calls) * 1000
  *
- * To wire this up:
- *   - Replace `queryPolarisCached` with a real POST to the cached-query
- *     endpoint (see https://docs.imply.io/polaris/api-query-precached/).
- *   - Map the response rows to `PolarisWidgetRow` in `mapPolarisRows`.
- *   - The rest of the pipeline (A/B selection, evaluation, table) requires
- *     no further changes.
+ * Required env:
+ *   POLARIS_BASE_URL    e.g. https://truvid.us-east-1.aws.api.imply.io
+ *   POLARIS_API_TOKEN   Imply Polaris API key (pok_*)
+ *   POLARIS_PROJECT_ID  Polaris project UUID
+ *   POLARIS_TABLE       Druid table holding the player analytics events
+ *
+ * If any of these are missing the client returns an empty result set so
+ * the UI can degrade gracefully to per-widget "missing data" messages.
  */
-
-const POLARIS_CONFIGURED_FLAG = Symbol("polarisConfigured");
 
 type PolarisConfig = {
   baseUrl: string;
   apiToken: string;
-  [POLARIS_CONFIGURED_FLAG]: true;
+  projectId: string;
+  table: string;
 };
 
 function readPolarisConfig(): PolarisConfig | undefined {
   const baseUrl = process.env.POLARIS_BASE_URL?.replace(/\/$/, "");
   const apiToken = process.env.POLARIS_API_TOKEN;
-  if (!baseUrl || !apiToken) return undefined;
-  return { baseUrl, apiToken, [POLARIS_CONFIGURED_FLAG]: true };
+  const projectId = process.env.POLARIS_PROJECT_ID;
+  const table = process.env.POLARIS_TABLE;
+  if (!baseUrl || !apiToken || !projectId || !table) return undefined;
+  return { baseUrl, apiToken, projectId, table };
 }
 
-/**
- * Real Polaris query goes here. Once we know the exact endpoint/payload:
- *
- *   // Imply Polaris API keys (pok_*) authenticate via HTTP Basic with the
- *   // key as the username and an empty password.
- *   const auth = Buffer.from(`${config.apiToken}:`).toString("base64");
- *   const res = await fetch(`${config.baseUrl}/v1/projects/<id>/query`, {
- *     method: "POST",
- *     headers: {
- *       Authorization: `Basic ${auth}`,
- *       "Content-Type": "application/json"
- *     },
- *     body: JSON.stringify(buildPrecachedQuery(input))
- *   });
- *   const json = await res.json();
- *   return mapPolarisRows(json);
- */
-async function queryPolarisCached(
-  _config: PolarisConfig,
-  _input: PolarisWidgetQueryInput
+/** Build the `Authorization: Basic ...` header value for a Polaris API key. */
+function basicAuthHeader(apiToken: string): string {
+  // Imply Polaris API keys (pok_*) authenticate via HTTP Basic with the key
+  // as the username and an empty password.
+  return "Basic " + Buffer.from(`${apiToken}:`).toString("base64");
+}
+
+/** YYYY-MM-DD + 1 day, returned as YYYY-MM-DD. Used for exclusive upper bound. */
+function addOneDay(yyyyMmDd: string): string {
+  const [y, m, d] = yyyyMmDd.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + 1);
+  const yy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+/** Escape a SQL identifier (for the table name). */
+function quoteIdent(name: string): string {
+  return `"${name.replace(/"/g, '""')}"`;
+}
+
+async function queryPolarisSql(
+  config: PolarisConfig,
+  input: PolarisWidgetQueryInput
 ): Promise<PolarisWidgetRow[]> {
-  // Intentionally not implemented yet. Throw so we never silently return
-  // stale/empty data when Polaris IS configured but the integration is
-  // incomplete — easier to catch during development.
-  throw new Error(
-    "Polaris client is not implemented yet. Configure src/lib/polarisClient.ts " +
-      "with the real Polaris API details, or unset POLARIS_BASE_URL/POLARIS_API_TOKEN " +
-      "to fall back to empty results during development."
+  if (input.widgetIds.length === 0) return [];
+
+  // Polaris stores events keyed by `__time`. We want every event whose
+  // local-day timestamp falls inside [startDate, endDate], so the upper
+  // bound is exclusive at midnight of (endDate + 1).
+  const startTs = `${input.startDate} 00:00:00`;
+  const endTs = `${addOneDay(input.endDate)} 00:00:00`;
+
+  const widgetPlaceholders = input.widgetIds.map(() => "?").join(", ");
+  const table = quoteIdent(config.table);
+
+  const sql = `
+    SELECT
+      "widget_id" AS "widgetId",
+      "version" AS "version",
+      SUM("server_calls") AS "serverCalls",
+      SUM("revenue") AS "revenue",
+      CASE
+        WHEN SUM("server_calls") > 0
+        THEN SUM("revenue") / SUM("server_calls") * 1000
+        ELSE 0
+      END AS "revenueEcpm"
+    FROM ${table}
+    WHERE "widget_id" IN (${widgetPlaceholders})
+      AND __time >= TIMESTAMP '${startTs}'
+      AND __time <  TIMESTAMP '${endTs}'
+    GROUP BY "widget_id", "version"
+  `;
+
+  const parameters = input.widgetIds.map((id) => ({
+    type: "VARCHAR",
+    value: id
+  }));
+
+  const res = await fetch(
+    `${config.baseUrl}/v1/projects/${config.projectId}/query/sql`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: basicAuthHeader(config.apiToken),
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({ query: sql, parameters, resultFormat: "object" })
+    }
   );
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(
+      `Polaris SQL failed (${res.status} ${res.statusText}): ${text.slice(0, 500)}`
+    );
+  }
+
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Polaris SQL returned non-JSON response: ${text.slice(0, 200)}`);
+  }
+
+  return mapPolarisRows(json);
+}
+
+/** Coerce unknown numeric-like values into a finite number (or 0). */
+function toNumber(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
 }
 
 /**
- * Map raw Polaris rows into our normalized `PolarisWidgetRow` shape.
- * Kept as a separate function so it can be unit-tested independently of the
- * HTTP call once the real schema is known. The `_rawResponse` parameter is
- * intentionally prefixed with `_` so linters know it's a placeholder.
+ * Map Polaris SQL response rows into our normalized `PolarisWidgetRow`.
+ * Accepts both camelCase aliases (what our SQL emits) and snake_case (in
+ * case the query is changed later).
  */
-export function mapPolarisRows(_rawResponse: unknown): PolarisWidgetRow[] {
-  return [];
+export function mapPolarisRows(rawResponse: unknown): PolarisWidgetRow[] {
+  if (!Array.isArray(rawResponse)) return [];
+  const out: PolarisWidgetRow[] = [];
+  for (const raw of rawResponse) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    const widgetId = r.widgetId ?? r.widget_id;
+    const version = r.version;
+    if (
+      (typeof widgetId !== "string" && typeof widgetId !== "number") ||
+      typeof version !== "string"
+    ) {
+      continue;
+    }
+    out.push({
+      widgetId: String(widgetId),
+      version,
+      serverCalls: toNumber(r.serverCalls ?? r.server_calls),
+      revenue: toNumber(r.revenue),
+      revenueEcpm: toNumber(r.revenueEcpm ?? r.revenue_ecpm)
+    });
+  }
+  return out;
 }
 
 /**
  * Public entry point used by API routes.
  *
  * Always returns a `PolarisQueryResult` (never throws for "not configured")
- * so the UI can show a clean per-widget "missing data" message during the
- * development phase.
+ * so the UI can show a clean per-widget "missing data" message when env
+ * vars are not set. Actual HTTP / SQL errors are still thrown — the API
+ * route surfaces them.
  */
 export async function getWidgetReport(
   input: PolarisWidgetQueryInput
@@ -95,7 +189,7 @@ export async function getWidgetReport(
   if (!config) {
     return { rows: [] };
   }
-  const rows = await queryPolarisCached(config, input);
+  const rows = await queryPolarisSql(config, input);
   return { rows };
 }
 
