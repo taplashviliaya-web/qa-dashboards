@@ -191,7 +191,7 @@ export function EpicDetails({ epicKey }: Props) {
 
         <section className="panel" style={{ background: "#fafbfc" }}>
           <div className="panel-header">
-            <h2>A/B Testing sub-task</h2>
+            <h2>A/B Testing task</h2>
             {ab.exists && ab.url ? (
               <a href={ab.url} target="_blank" rel="noopener noreferrer">
                 {ab.key}
@@ -200,7 +200,7 @@ export function EpicDetails({ epicKey }: Props) {
           </div>
 
           {!ab.exists ? (
-            <p className="warning">{ab.message ?? "A/B Testing sub-task is not created yet."}</p>
+            <p className="warning">{ab.message ?? "A/B Testing task is not created yet."}</p>
           ) : ab.widgets.length === 0 ? (
             <p className="warning">
               {ab.message ?? "No Widget IDs found in the A/B Testing description."}
@@ -244,8 +244,8 @@ export function EpicDetails({ epicKey }: Props) {
 
         {!canFetchPolaris ? (
           <p className="muted">
-            No widgets parsed yet — once the A/B Testing sub-task lists Widget IDs, you can
-            fetch Polaris data here.
+            No widgets parsed yet — once the A/B Testing task lists Widget IDs, you can fetch
+            Polaris data here.
           </p>
         ) : report.status === "idle" ? (
           <p className="muted">

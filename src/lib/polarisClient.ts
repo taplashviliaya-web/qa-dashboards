@@ -43,10 +43,13 @@ function readPolarisConfig(): PolarisConfig | undefined {
 /**
  * Real Polaris query goes here. Once we know the exact endpoint/payload:
  *
+ *   // Imply Polaris API keys (pok_*) authenticate via HTTP Basic with the
+ *   // key as the username and an empty password.
+ *   const auth = Buffer.from(`${config.apiToken}:`).toString("base64");
  *   const res = await fetch(`${config.baseUrl}/v1/projects/<id>/query`, {
  *     method: "POST",
  *     headers: {
- *       Authorization: `Bearer ${config.apiToken}`,
+ *       Authorization: `Basic ${auth}`,
  *       "Content-Type": "application/json"
  *     },
  *     body: JSON.stringify(buildPrecachedQuery(input))

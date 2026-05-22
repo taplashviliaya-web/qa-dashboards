@@ -20,11 +20,18 @@ const EPIC_DETAIL_FIELDS = [
   "summary",
   "status",
   "issuelinks",
-  "subtasks",
   "issuetype"
 ];
 
-const AB_TESTING_SUBTASK_NAME = "A/B Testing";
+/**
+ * Name of the child issue that contains the A/B Testing widget list.
+ *
+ * IMPORTANT: in the TRUV project, "A/B Testing" is an Epic child of
+ * type **Task** (not the legacy "Sub-task" issue type), so it does NOT
+ * appear in `issue.fields.subtasks`. We resolve it via a JQL search on
+ * `parent = <epicKey> AND summary ~ "A/B Testing"` instead.
+ */
+const AB_TESTING_TASK_NAME = "A/B Testing";
 
 /** Read required env vars; throws a clean Error if any are missing. */
 function getJiraConfig(): {
@@ -141,7 +148,12 @@ export async function getActiveEpics(maxResults = 100): Promise<JiraEpicSummary[
     maxResults: String(maxResults)
   });
 
-  const data = await jiraFetch<JiraSearchResponse>(`/rest/api/3/search?${params.toString()}`);
+  // Atlassian deprecated /rest/api/3/search in 2025 (returns 410 Gone).
+  // The replacement is /rest/api/3/search/jql — same auth, same query
+  // parameters we care about (jql, fields, maxResults). Pagination changed
+  // from startAt/total to nextPageToken/isLast, but we cap at a single page
+  // here (the QA team won't have >100 active Player Version Epics at once).
+  const data = await jiraFetch<JiraSearchResponse>(`/rest/api/3/search/jql?${params.toString()}`);
   const issues = data.issues ?? [];
   return issues.map((issue) => toEpicSummary(issue, baseUrl));
 }
@@ -172,18 +184,40 @@ function extractIsBlockedBy(issue: JiraIssueRaw, baseUrl: string): JiraLinkedTic
   return tickets;
 }
 
-function findAbTestingSubtaskKey(issue: JiraIssueRaw): string | undefined {
-  const subtasks = issue.fields.subtasks ?? [];
-  const match = subtasks.find(
-    (s) => (s.fields?.summary ?? "").trim().toLowerCase() === AB_TESTING_SUBTASK_NAME.toLowerCase()
-  );
-  return match?.key;
-}
-
 /** Fetch a single issue with the fields we need (including description). */
 async function getIssue(key: string, fields: string[]): Promise<JiraIssueRaw> {
   const params = new URLSearchParams({ fields: fields.join(",") });
   return jiraFetch<JiraIssueRaw>(`/rest/api/3/issue/${encodeURIComponent(key)}?${params.toString()}`);
+}
+
+/**
+ * Locate the "A/B Testing" child Task of an Epic, including its description.
+ *
+ * Returns the first matching issue (key + status + description) or
+ * `undefined` if none exists. We deliberately do the lookup as a single
+ * search call (rather than list-children-then-fetch) so the description
+ * comes back in the same round-trip — typical Player Version Epics have
+ * exactly one A/B Testing task, so `maxResults=5` is plenty.
+ */
+async function findAbTestingChild(epicKey: string): Promise<JiraIssueRaw | undefined> {
+  const jql = `parent = "${epicKey}" AND summary ~ "\\"${AB_TESTING_TASK_NAME}\\""`;
+  const params = new URLSearchParams({
+    jql,
+    fields: "summary,status,description",
+    maxResults: "5"
+  });
+  const data = await jiraFetch<JiraSearchResponse>(
+    `/rest/api/3/search/jql?${params.toString()}`
+  );
+  const issues = data.issues ?? [];
+  // Defensive: prefer an exact (case-insensitive, trimmed) summary match so
+  // we don't accidentally pick up an unrelated ticket like "A/B Testing
+  // dashboard improvements".
+  const exact = issues.find(
+    (i) =>
+      (i.fields.summary ?? "").trim().toLowerCase() === AB_TESTING_TASK_NAME.toLowerCase()
+  );
+  return exact ?? issues[0];
 }
 
 /**
@@ -201,9 +235,9 @@ export async function getEpicDetails(key: string): Promise<JiraEpicDetails> {
   const linkedTickets = extractIsBlockedBy(epic, baseUrl);
   const playerVersion = parsePlayerVersion(title);
 
-  const subtaskKey = findAbTestingSubtaskKey(epic);
+  const abIssue = await findAbTestingChild(epic.key);
 
-  if (!subtaskKey) {
+  if (!abIssue) {
     return {
       key: epic.key,
       title,
@@ -214,13 +248,12 @@ export async function getEpicDetails(key: string): Promise<JiraEpicDetails> {
       abTesting: {
         exists: false,
         widgets: [],
-        message: "A/B Testing sub-task is not created yet."
+        message: "A/B Testing task is not created yet."
       }
     };
   }
 
-  const subtask = await getIssue(subtaskKey, ["summary", "status", "description"]);
-  const descriptionText = normalizeDescription(subtask.fields.description);
+  const descriptionText = normalizeDescription(abIssue.fields.description);
   const widgets = parseWidgets(descriptionText);
 
   return {
@@ -232,9 +265,9 @@ export async function getEpicDetails(key: string): Promise<JiraEpicDetails> {
     linkedTickets,
     abTesting: {
       exists: true,
-      key: subtask.key,
-      status: subtask.fields.status?.name ?? "Unknown",
-      url: buildIssueUrl(baseUrl, subtask.key),
+      key: abIssue.key,
+      status: abIssue.fields.status?.name ?? "Unknown",
+      url: buildIssueUrl(baseUrl, abIssue.key),
       widgets,
       message:
         widgets.length === 0
